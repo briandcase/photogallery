@@ -3,8 +3,6 @@ package com.example.bdcas.photogallery;
 import android.net.Uri;
 import android.util.Log;
 
-import com.google.gson.Gson;
-
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -42,7 +40,7 @@ public class FlickrFetchr {
                 throw new IOException(connection.getResponseMessage() + ": with " + urlSpec);
             }
 
-            int bytesRead = 0;
+            int bytesRead;
             byte[] buffer = new byte[1024];
             while ((bytesRead = in.read(buffer)) > 0)
             {
@@ -55,7 +53,7 @@ public class FlickrFetchr {
         }
     }
 
-    public String getUrlString(String urlSpec) throws IOException {
+    private String getUrlString(String urlSpec) throws IOException {
         return new String(getUrlBytes(urlSpec));
     }
 
@@ -118,6 +116,7 @@ public class FlickrFetchr {
             }
 
             item.setmUrl(photoJsonObject.getString("url_s"));
+            item.setmOwner(photoJsonObject.getString("owner"));
                 items.add(item);
         }
     }

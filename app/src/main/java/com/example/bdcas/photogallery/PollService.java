@@ -1,5 +1,6 @@
 package com.example.bdcas.photogallery;
 
+import android.app.Activity;
 import android.app.AlarmManager;
 import android.app.IntentService;
 import android.app.Notification;
@@ -10,7 +11,6 @@ import android.content.res.Resources;
 import android.net.ConnectivityManager;
 import android.os.SystemClock;
 import android.support.v4.app.NotificationCompat;
-import android.support.v4.app.NotificationManagerCompat;
 import android.util.Log;
 
 import java.util.List;
@@ -21,6 +21,12 @@ public class PollService extends IntentService {
 
     // Set interval to 1 minute
     private static final long POLL_INTERVAL_MS = TimeUnit.MINUTES.toMillis(15);
+
+    public static final String ACTION_SHOW_NOTIFICATION = "com.example.bdcas.photogallery.SHOW_NOTIFICATION";
+
+    public static final String PERM_PRIVATE = "com.example.bdcas.photogallery.PRIVATE";
+    public static final String REQUEST_CODE = "REQUEST_CODE";
+    public static final String NOTIFICATION = "NOTIFICATION";
 
     public static Intent newItent(Context context) {
         return  new Intent(context, PollService.class);
@@ -33,11 +39,17 @@ public class PollService extends IntentService {
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
 
         if (isOn) {
-            alarmManager.setRepeating(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime(), POLL_INTERVAL_MS, pi );
+            if (alarmManager != null) {
+                alarmManager.setRepeating(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime(), POLL_INTERVAL_MS, pi);
+            }
         } else {
-            alarmManager.cancel(pi);
+            if(alarmManager != null) {
+                alarmManager.cancel(pi);
+            }
             pi.cancel();
         }
+
+        QueryPreferences.setAlarmOn(context, isOn);
     }
 
     public static boolean isServiceAlarmOn(Context context) {
@@ -79,7 +91,7 @@ public class PollService extends IntentService {
             Resources resources = getResources();
             Intent i = PhotoGalleryActivity.newIntent(this);
             PendingIntent pi = PendingIntent.getActivity(this, 0, i, 0);
-            Notification notification = new NotificationCompat.Builder(this)
+            Notification notification = new NotificationCompat.Builder(this, "MY_CH_ID")
                     .setTicker(resources.getString(R.string.new_pictures_text))
                     .setSmallIcon(android.R.drawable.ic_menu_report_image)
                     .setContentTitle(resources.getString(R.string.new_pictures_title))
@@ -88,20 +100,31 @@ public class PollService extends IntentService {
                     .setAutoCancel(true)
                     .build();
 
-            NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
-            notificationManager.notify(0, notification);
+            showBackgroundNotification(0, notification);
         }
 
         QueryPreferences.setLastResultId(this, resultId);
+    }
+
+    private void showBackgroundNotification(int requestCode, Notification notification) {
+        Intent i = new Intent(ACTION_SHOW_NOTIFICATION);
+        i.putExtra(REQUEST_CODE, requestCode);
+        i.putExtra(NOTIFICATION, notification);
+        sendOrderedBroadcast(i, PERM_PRIVATE, null, null, Activity.RESULT_OK, null, null);
     }
 
     private boolean isNetworkAvailableAndConnected()
     {
         ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
 
-        boolean isNetworkAvailable = cm.getActiveNetworkInfo() != null;
-        boolean isNetworkConnected = isNetworkAvailable && cm.getActiveNetworkInfo().isConnected();
+        if (cm != null){
+            boolean isNetworkAvailable = cm.getActiveNetworkInfo() != null;
+            boolean isNetworkConnected = isNetworkAvailable && cm.getActiveNetworkInfo().isConnected();
+            return isNetworkConnected;
+        }
 
-        return isNetworkConnected;
+        else {
+            return false;
+        }
     }
 }
